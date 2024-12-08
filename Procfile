@@ -1,0 +1,1 @@
+web: sh sutup.sh && stramlit run .\DZC_web.py
