@@ -8,7 +8,7 @@ import sklearn
 # Configuración de la página (debe ser la primera instrucción)
 ############################################################################################################################
 
-st.set_page_config(page_title="Clasificador Riesgo venta de seguros", layout="centered")
+st.set_page_config(page_title="Clasificador diferencial del Dengue, Zika y Chikungunya", layout="centered")
     # Título principal centrado
 # Función para cargar imágenes locales como base64
 def load_image_as_base64(file_path):
