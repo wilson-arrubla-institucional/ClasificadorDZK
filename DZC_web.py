@@ -66,7 +66,7 @@ def main():
         option_sex = ['F', 'M']
 
         Sexo = st.sidebar.selectbox('Sex', option_sex)
-        headache = st.sidebar.selectbox('headache', option)
+        headache = st.sidebar.selectbox('Dolor de Cabeza', option)
         Retroocular_pain = st.sidebar.selectbox('Dolor Retroocular', option)
         Myalgia = st.sidebar.selectbox('Mialgia', option)
         Arthralgia = st.sidebar.selectbox('Artralgia', option)
@@ -126,261 +126,274 @@ def main():
     st.subheader('Valores seleccionados')
     st.write(df_preparados)
 
+# Validar si todos los síntomas están en "No"
+    symptom_keys = [
+        'headache', 'Retroocular_pain', 'Myalgia', 'Arthralgia', 'Rash',
+        'Abdominal_pain', 'Threw_up', 'Diarrhea', 'Drowsiness',
+        'Hepatomegaly', 'Mucosal_hemorrhage', 'Hyperemia', 'exanthema'
+    ]
+    all_symptoms_no = (df[symptom_keys] == "No").all().all()
+
+
     # Crear un botón para realizar la predicción
     if st.button('Realizar Predicción'):
-        Y_fut = modelTree.predict(df_preparados)
-        resultado = labelencoder.inverse_transform(Y_fut)
+        if all_symptoms_no:
+            st.error("Debe seleccionar al menos un síntoma del paciente para continuar con la predicción.")
+        else:
+
+            Y_fut = modelTree.predict(df_preparados)
+            resultado = labelencoder.inverse_transform(Y_fut)
         #st.success(f'La predicción es: {(resultado[0])}')
 #########################################################################################################################
 #Preparación para modelo con pesos de la evidencia cientifica#
 
-        def asignacion_pesos_evidencia():
-            datos1 = df.copy()
-            datos1['Target'] = resultado[0]
-            #st.write(datos1)
-           #st.write(f'predicción: {(resultado[0])}')#Revisar el dataframe con la predicción Target
-        # Definición  rangos específicos certeza de la evidencia
-            Muy_bajo_value_0 =0.0
-            Muy_bajo_value_1 =0.25
-            Bajo_value_0 = 0.26
-            Bajo_value_1 = 0.50
-            Moderado_value_0 = 0.51
-            Moderado_value_1 = 0.75
-            Alto_value_0 = 0.76
-            Alto_value_1 =1
+            def asignacion_pesos_evidencia():
+                datos1 = df.copy()
+                datos1['Target'] = resultado[0]
+                #st.write(datos1)
+            #st.write(f'predicción: {(resultado[0])}')#Revisar el dataframe con la predicción Target
+            # Definición  rangos específicos certeza de la evidencia
+                Muy_bajo_value_0 =0.0
+                Muy_bajo_value_1 =0.25
+                Bajo_value_0 = 0.26
+                Bajo_value_1 = 0.50
+                Moderado_value_0 = 0.51
+                Moderado_value_1 = 0.75
+                Alto_value_0 = 0.76
+                Alto_value_1 =1
 
-            #Limites de los días del transcurso de las enfermedades
-            x_min = 0
-            x_max = 12
+                #Limites de los días del transcurso de las enfermedades
+                x_min = 0
+                x_max = 12
 
-            # Función para interpolación lineal entre dos valores
+                # Función para interpolación lineal entre dos valores
 
-            def interpolate(min_value, max_value, x, x_min, x_max):
-                return min_value + (max_value - min_value) * ((x - x_min) / (x_max - x_min))
+                def interpolate(min_value, max_value, x, x_min, x_max):
+                    return min_value + (max_value - min_value) * ((x - x_min) / (x_max - x_min))
 
-            # Asignación basada en interpolación lineal dentro del rango especificado
-            #Mialgia
-            for index, row in datos1.iterrows():
-                if row['Myalgia'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Myalgia'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Myalgia'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Myalgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Myalgia'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Myalgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                # Asignación basada en interpolación lineal dentro del rango especificado
+                #Mialgia
+                for index, row in datos1.iterrows():
+                    if row['Myalgia'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Myalgia'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Myalgia'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Myalgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Myalgia'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Myalgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
 
-                elif row['Myalgia'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Myalgia'] = 0
-                elif row['Myalgia'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Myalgia'] = 0
-                elif row['Myalgia'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Myalgia'] = 0
-            datos1['Myalgia'] = pd.to_numeric(datos1['Myalgia'], errors='coerce')
+                    elif row['Myalgia'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Myalgia'] = 0
+                    elif row['Myalgia'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Myalgia'] = 0
+                    elif row['Myalgia'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Myalgia'] = 0
+                datos1['Myalgia'] = pd.to_numeric(datos1['Myalgia'], errors='coerce')
 
-            # Cefalea
-            for index, row in datos1.iterrows():
-                if row['headache'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'headache'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['headache'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'headache'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['headache'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'headache'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-
-
-                elif row['headache'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'headache'] = 0
-                elif row['headache'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'headache'] = 0
-                elif row['headache'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'headache'] = 0
-            datos1['headache'] = pd.to_numeric(datos1['headache'], errors='coerce')
-
-        #Dolor Retroocular
-            for index, row in datos1.iterrows():
-                if row['Retroocular_pain'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Retroocular_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Retroocular_pain'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Retroocular_pain'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Retroocular_pain'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Retroocular_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                # Cefalea
+                for index, row in datos1.iterrows():
+                    if row['headache'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'headache'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['headache'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'headache'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['headache'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'headache'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
 
 
-                elif row['Retroocular_pain'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Retroocular_pain'] = 0
-                elif row['Retroocular_pain'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Retroocular_pain'] = 0
-                elif row['Retroocular_pain'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Retroocular_pain'] = 0
-                
-            datos1['Retroocular_pain'] = pd.to_numeric(datos1['Retroocular_pain'], errors='coerce')
+                    elif row['headache'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'headache'] = 0
+                    elif row['headache'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'headache'] = 0
+                    elif row['headache'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'headache'] = 0
+                datos1['headache'] = pd.to_numeric(datos1['headache'], errors='coerce')
 
-        # Artralgia
-            for index, row in datos1.iterrows():
-                if row['Arthralgia'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Arthralgia'] = interpolate(Alto_value_0, Alto_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Arthralgia'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Arthralgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Arthralgia'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Arthralgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-
-                elif row['Arthralgia'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Arthralgia'] = 0
-                elif row['Arthralgia'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Arthralgia'] = 0
-                elif row['Arthralgia'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Arthralgia'] = 0
-            datos1['Arthralgia'] = pd.to_numeric(datos1['Arthralgia'], errors='coerce')
+            #Dolor Retroocular
+                for index, row in datos1.iterrows():
+                    if row['Retroocular_pain'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Retroocular_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Retroocular_pain'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Retroocular_pain'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Retroocular_pain'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Retroocular_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
 
 
-        #Erupción Rash
-            for index, row in datos1.iterrows():
-                if row['Rash'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Rash'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Rash'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Rash'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Rash'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Rash'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Retroocular_pain'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Retroocular_pain'] = 0
+                    elif row['Retroocular_pain'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Retroocular_pain'] = 0
+                    elif row['Retroocular_pain'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Retroocular_pain'] = 0
+                    
+                datos1['Retroocular_pain'] = pd.to_numeric(datos1['Retroocular_pain'], errors='coerce')
 
-                elif row['Rash'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Rash'] = 0
-                elif row['Rash'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Rash'] = 0
-                elif row['Rash'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Rash'] = 0
-            datos1['Rash'] = pd.to_numeric(datos1['Rash'], errors='coerce')
+            # Artralgia
+                for index, row in datos1.iterrows():
+                    if row['Arthralgia'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Arthralgia'] = interpolate(Alto_value_0, Alto_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Arthralgia'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Arthralgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Arthralgia'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Arthralgia'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
 
-        #Dolor Abdominal
-            for index, row in datos1.iterrows():
-                if row['Abdominal_pain'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Abdominal_pain'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Abdominal_pain'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Abdominal_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Abdominal_pain'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Abdominal_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Arthralgia'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Arthralgia'] = 0
+                    elif row['Arthralgia'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Arthralgia'] = 0
+                    elif row['Arthralgia'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Arthralgia'] = 0
+                datos1['Arthralgia'] = pd.to_numeric(datos1['Arthralgia'], errors='coerce')
 
-                elif row['Abdominal_pain'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Abdominal_pain'] = 0
-                elif row['Abdominal_pain'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Abdominal_pain'] = 0
-                elif row['Abdominal_pain'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Abdominal_pain'] = 0
-            datos1['Abdominal_pain'] = pd.to_numeric(datos1['Abdominal_pain'], errors='coerce')
+
+            #Erupción Rash
+                for index, row in datos1.iterrows():
+                    if row['Rash'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Rash'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Rash'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Rash'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Rash'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Rash'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+
+                    elif row['Rash'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Rash'] = 0
+                    elif row['Rash'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Rash'] = 0
+                    elif row['Rash'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Rash'] = 0
+                datos1['Rash'] = pd.to_numeric(datos1['Rash'], errors='coerce')
+
+            #Dolor Abdominal
+                for index, row in datos1.iterrows():
+                    if row['Abdominal_pain'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Abdominal_pain'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Abdominal_pain'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Abdominal_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Abdominal_pain'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Abdominal_pain'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+
+                    elif row['Abdominal_pain'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Abdominal_pain'] = 0
+                    elif row['Abdominal_pain'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Abdominal_pain'] = 0
+                    elif row['Abdominal_pain'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Abdominal_pain'] = 0
+                datos1['Abdominal_pain'] = pd.to_numeric(datos1['Abdominal_pain'], errors='coerce')
+            
+            #Vómitos
+                for index, row in datos1.iterrows():
+                    if row['Threw_up'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Threw_up'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Threw_up'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Threw_up'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Threw_up'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Threw_up'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+
+                    elif row['Threw_up'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Threw_up'] = 0
+                    elif row['Threw_up'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Threw_up'] = 0
+                    elif row['Threw_up'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Threw_up'] = 0
+                datos1['Threw_up'] = pd.to_numeric(datos1['Threw_up'], errors='coerce')
+
+            # Diarrea
+                for index, row in datos1.iterrows():
+                    if row['Diarrhea'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Diarrhea'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Diarrhea'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Diarrhea'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Diarrhea'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Diarrhea'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+
+                    elif row['Diarrhea'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Diarrhea'] = 0
+                    elif row['Diarrhea'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Diarrhea'] = 0
+                    elif row['Diarrhea'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Diarrhea'] = 0
+                datos1['Diarrhea'] = pd.to_numeric(datos1['Diarrhea'], errors='coerce')
+            
+            #Hepatomegalia
+                for index, row in datos1.iterrows():
+                    if row['Hepatomegaly'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Hepatomegaly'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Hepatomegaly'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Hepatomegaly'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Hepatomegaly'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Hepatomegaly'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+
+                    elif row['Hepatomegaly'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Hepatomegaly'] = 0
+                    elif row['Hepatomegaly'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Hepatomegaly'] = 0
+                    elif row['Hepatomegaly'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Hepatomegaly'] = 0
+                datos1['Hepatomegaly'] = pd.to_numeric(datos1['Hepatomegaly'], errors='coerce')
+
+            #HEMORRAGIAS EN MUCOSAS
+                for index, row in datos1.iterrows():
+                    if row['Mucosal_hemorrhage'] == "Yes" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Mucosal_hemorrhage'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Mucosal_hemorrhage'] == "Yes" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Mucosal_hemorrhage'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
+                    elif row['Mucosal_hemorrhage'] == "Yes" and row['Target'] == "Zika":
+                        datos1.at[index, 'Mucosal_hemorrhage'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+
+                    elif row['Mucosal_hemorrhage'] == "No" and row['Target'] == "Chikungunya":
+                        datos1.at[index, 'Mucosal_hemorrhage'] = 0
+                    elif row['Mucosal_hemorrhage'] == "No" and row['Target'] == "Dengue":
+                        datos1.at[index, 'Mucosal_hemorrhage'] = 0
+                    elif row['Mucosal_hemorrhage'] == "No" and row['Target'] == "Zika":
+                        datos1.at[index, 'Mucosal_hemorrhage'] = 0
+                datos1['Mucosal_hemorrhage'] = pd.to_numeric(datos1['Mucosal_hemorrhage'], errors='coerce')
+
+
+                return datos1
+            # Llamada a la función
         
-        #Vómitos
-            for index, row in datos1.iterrows():
-                if row['Threw_up'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Threw_up'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Threw_up'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Threw_up'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Threw_up'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Threw_up'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
+            df_datos_pesos = asignacion_pesos_evidencia()
+            # Eliminar la columna "Target" y reasignar el DataFrame
+            df_datos_pesos = df_datos_pesos.drop("Target", axis=1)
+            # Metodo para preparar datos basados en la evidencia cientifica
+            #st.write(df_datos_pesos)
 
-                elif row['Threw_up'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Threw_up'] = 0
-                elif row['Threw_up'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Threw_up'] = 0
-                elif row['Threw_up'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Threw_up'] = 0
-            datos1['Threw_up'] = pd.to_numeric(datos1['Threw_up'], errors='coerce')
-
-        # Diarrea
-            for index, row in datos1.iterrows():
-                if row['Diarrhea'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Diarrhea'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Diarrhea'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Diarrhea'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Diarrhea'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Diarrhea'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-
-                elif row['Diarrhea'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Diarrhea'] = 0
-                elif row['Diarrhea'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Diarrhea'] = 0
-                elif row['Diarrhea'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Diarrhea'] = 0
-            datos1['Diarrhea'] = pd.to_numeric(datos1['Diarrhea'], errors='coerce')
-        
-        #Hepatomegalia
-            for index, row in datos1.iterrows():
-                if row['Hepatomegaly'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Hepatomegaly'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Hepatomegaly'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Hepatomegaly'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Hepatomegaly'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Hepatomegaly'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-
-                elif row['Hepatomegaly'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Hepatomegaly'] = 0
-                elif row['Hepatomegaly'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Hepatomegaly'] = 0
-                elif row['Hepatomegaly'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Hepatomegaly'] = 0
-            datos1['Hepatomegaly'] = pd.to_numeric(datos1['Hepatomegaly'], errors='coerce')
-
-        #HEMORRAGIAS EN MUCOSAS
-            for index, row in datos1.iterrows():
-                if row['Mucosal_hemorrhage'] == "Yes" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Mucosal_hemorrhage'] = interpolate(Moderado_value_0, Moderado_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Mucosal_hemorrhage'] == "Yes" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Mucosal_hemorrhage'] = interpolate(Bajo_value_0, Bajo_value_1, row['Symptom_days'], x_min, x_max)
-                elif row['Mucosal_hemorrhage'] == "Yes" and row['Target'] == "Zika":
-                    datos1.at[index, 'Mucosal_hemorrhage'] = interpolate(Muy_bajo_value_0, Muy_bajo_value_1, row['Symptom_days'], x_min, x_max)
-
-                elif row['Mucosal_hemorrhage'] == "No" and row['Target'] == "Chikungunya":
-                    datos1.at[index, 'Mucosal_hemorrhage'] = 0
-                elif row['Mucosal_hemorrhage'] == "No" and row['Target'] == "Dengue":
-                    datos1.at[index, 'Mucosal_hemorrhage'] = 0
-                elif row['Mucosal_hemorrhage'] == "No" and row['Target'] == "Zika":
-                    datos1.at[index, 'Mucosal_hemorrhage'] = 0
-            datos1['Mucosal_hemorrhage'] = pd.to_numeric(datos1['Mucosal_hemorrhage'], errors='coerce')
-
-
-            return datos1
-        # Llamada a la función
-    
-        df_datos_pesos = asignacion_pesos_evidencia()
-        # Eliminar la columna "Target" y reasignar el DataFrame
-        df_datos_pesos = df_datos_pesos.drop("Target", axis=1)
-        # Metodo para preparar datos basados en la evidencia cientifica
-        #st.write(df_datos_pesos)
-
-        def prepara_datos_evidencia():
-                # Copiar los datos originales
-            dato_prepa = df_datos_pesos.copy()
-            
-            # Crear variables dummies para las columnas categóricas
-            dummy_columns = ['Sex', 'Drowsiness', 'Hyperemia', 'exanthema']
-            dato_prepa = pd.get_dummies(dato_prepa, columns=dummy_columns, drop_first=False)
-            
-            # Lista de columnas esperadas en el modelo (en el orden correcto)
-            expected_columns = [
-                'Age', 'Symptom_days', 'headache', 'Retroocular_pain', 'Myalgia', 'Arthralgia', 
-                'Rash', 'Abdominal_pain', 'Threw_up', 'Diarrhea', 'Hepatomegaly', 
-                'Mucosal_hemorrhage', 'Sex_M', 'Drowsiness_Yes', 'Hyperemia_Yes', 'exanthema_Yes'
-            ]
-            
-            # Asegurarse de que todas las columnas esperadas estén presentes en el DataFrame
-            for col in expected_columns:
-                if col not in dato_prepa.columns:
-                    # Si una columna está ausente, se crea con valores por defecto (0 en este caso)
-                    dato_prepa[col] = 0
-            
-            # Ordenar las columnas según el orden esperado
-            dato_prepa = dato_prepa[expected_columns]
-            
-            return dato_prepa
-                                
-
+            def prepara_datos_evidencia():
+                    # Copiar los datos originales
+                dato_prepa = df_datos_pesos.copy()
                 
+                # Crear variables dummies para las columnas categóricas
+                dummy_columns = ['Sex', 'Drowsiness', 'Hyperemia', 'exanthema']
+                dato_prepa = pd.get_dummies(dato_prepa, columns=dummy_columns, drop_first=False)
+                
+                # Lista de columnas esperadas en el modelo (en el orden correcto)
+                expected_columns = [
+                    'Age', 'Symptom_days', 'headache', 'Retroocular_pain', 'Myalgia', 'Arthralgia', 
+                    'Rash', 'Abdominal_pain', 'Threw_up', 'Diarrhea', 'Hepatomegaly', 
+                    'Mucosal_hemorrhage', 'Sex_M', 'Drowsiness_Yes', 'Hyperemia_Yes', 'exanthema_Yes'
+                ]
+                
+                # Asegurarse de que todas las columnas esperadas estén presentes en el DataFrame
+                for col in expected_columns:
+                    if col not in dato_prepa.columns:
+                        # Si una columna está ausente, se crea con valores por defecto (0 en este caso)
+                        dato_prepa[col] = 0
+                
+                # Ordenar las columnas según el orden esperado
+                dato_prepa = dato_prepa[expected_columns]
+                
+                return dato_prepa
+                                    
 
-        data = prepara_datos_evidencia() 
-        #Revisar dataframe antes de pasarlo por el modelo
-        #st.subheader('Valores ')
-        #st.write(data)
-        #st.write(data.dtypes)
+                    
 
-        Y_fut_2 = mod_Tree.predict(data)
-        resultado_2 = label_encoder.inverse_transform(Y_fut_2)
-        st.success(f'La predicción es: {(resultado_2[0])}')
+            data = prepara_datos_evidencia() 
+            #Revisar dataframe antes de pasarlo por el modelo
+            #st.subheader('Valores ')
+            #st.write(data)
+            #st.write(data.dtypes)
+
+            Y_fut_2 = mod_Tree.predict(data)
+            resultado_2 = label_encoder.inverse_transform(Y_fut_2)
+            st.success(f'La predicción es: {(resultado_2[0])}')
 
     
     # Crear un botón para limpiar por defecto
