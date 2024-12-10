@@ -65,7 +65,7 @@ def main():
         option = ['No', 'Yes']
         option_sex = ['F', 'M']
 
-        Sexo = st.sidebar.selectbox('Sex', option_sex)
+        Sexo = st.sidebar.selectbox('Género', option_sex)
         headache = st.sidebar.selectbox('Dolor de Cabeza', option)
         Retroocular_pain = st.sidebar.selectbox('Dolor Retroocular', option)
         Myalgia = st.sidebar.selectbox('Mialgia', option)
